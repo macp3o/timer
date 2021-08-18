@@ -1,0 +1,52 @@
+#! /bin/bash
+
+if [ "$1" = "-h" -o "$1" = "--help" ]; then
+  echo "Usage: timer [TIME [MESSAGE]]"
+  echo "Starts a timer counter."
+  echo "Start a time counter and issue a desktop notification after TIME."
+  echo "The counter colors are also reversed after TIME."
+  echo
+  echo "TIME is either:"
+  echo "  - A time span number followed by s, m, or h."
+  echo "  - An absolute HH, HH:MM, or HH:MM:SS time."
+  echo
+  echo "MESSAGE is used for the desktop notification."
+  echo
+  echo "Example 1: timer"
+  echo "Starts an infinite  time counter. Type Ctl+C to stop."
+  echo
+  echo "Example 2: timer 10m Lunch"
+  echo "Starts a time counter and issues a notification after 10 minutes."
+  echo
+  echo "Example 3: timer 12:15"
+  echo "Starts a time counter and issues a notification at 13:15:00."
+  exit
+fi
+
+
+# hide and restore caret and color
+#
+function cleanup() {
+  tput cnorm && tput sgr0
+}
+trap cleanup EXIT
+tput civis
+
+
+# timer
+#
+if [ -z "$1" ]; then timeout=-1
+elif [ ${1: -1} == s ]; then timeout=${1: 0:-1}
+elif [ ${1: -1} == m ]; then timeout=$((10#${1: 0:-1}*60))
+elif [ ${1: -1} == h ]; then timeout=$((10#${1: 0:-1}*3660))
+else
+  # HH or HH:MM or HH:MM:SS
+  timeout=$((`date -d $(cut -d: -f1-3<<<$1:00) +%s`-`date +%s`))
+fi
+
+for ((counter=0; ++counter;)); do
+  [ $((timeout--)) == 0 ] && tput rev && notify-send "Timer:" "$*"
+  echo -ne "\r$(date -u --date @$counter +%H:%M:%S)"
+  sleep 1
+done
+
